@@ -7,7 +7,7 @@ module Views.Editor.Header.View
 
 import Extra.Html as Html
 import Html exposing (Html, button, div, h1, header, span, text)
-import Html.Attributes exposing (disabled)
+import Html.Attributes exposing (attribute, disabled, id)
 import Html.Events exposing (onClick)
 import Shared.Icons as Icons
 import Views.Editor.Header.Classes exposing (..)
@@ -46,6 +46,7 @@ viewButton clickMsg isDisabled icon label =
         [ class [ Button ]
         , onClick clickMsg
         , disabled isDisabled
+        , id label
         ]
         [ div [ class [ ButtonInner ] ]
             [ span [ class [ ButtonIcon ] ]
@@ -124,16 +125,36 @@ viewEmbedLinkButton config =
         "Share"
 
 
+viewCollaborateButton : Html msg
+viewCollaborateButton =
+    button
+        [ class [ Button ]
+        , attribute "onclick" "TogetherJS(this); return false;"
+        , disabled False
+        ]
+        [ div [ class [ ButtonInner ] ]
+            [ span [ class [ ButtonIcon ] ]
+                [ Icons.collaborate ]
+            , span [ class [ ButtonText ] ]
+                [ text "Collaborate" ]
+            ]
+        ]
+
+
 view : Config msg -> Html msg
 view config =
     header [ class [ Header ] ]
-        [ div [ class [ HeaderGroup ] ]
-            [ viewLogo
-            , Html.viewIfLazy config.buttonsVisible (\() -> viewCompileButton config)
-            , Html.viewIfLazy config.buttonsVisible (\() -> viewSaveButton config)
-            , Html.viewIfLazy config.buttonsVisible (\() -> viewFormatButton config)
-            , Html.viewIfLazy config.buttonsVisible (\() -> viewEmbedLinkButton config)
-            ]
+        [ div [ class [ HeaderGroup ] ] <|
+            if config.buttonsVisible then
+                [ viewLogo
+                , viewCompileButton config
+                , viewSaveButton config
+                , viewFormatButton config
+                , viewEmbedLinkButton config
+                , viewCollaborateButton
+                ]
+            else
+                [ viewLogo ]
         , div [ class [ HeaderGroup ] ]
             [ viewAboutButton config
             ]

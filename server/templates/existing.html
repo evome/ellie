@@ -20,6 +20,7 @@
     <meta name="accepted_terms_version" content="{{ data.accepted_terms_version|tojson|safe }}" />
     <meta name="latest_terms_version" content="{{ constants.LATEST_TERMS_VERSION|tojson|safe }}" />
     <link href="https://fonts.googleapis.com/css?family=Leckerli+One|Quicksand" rel="stylesheet" />
+    {% include "_together_js.html" %}
     {% if constants.ENV == "production" %}
       <link href="{{ constants.APP_CSS }}" rel="stylesheet" />
     {% endif %}
