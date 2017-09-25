@@ -1,46 +1,25 @@
-module Pages.Editor.View exposing (..)
+module Pages.Editor.Layout exposing (..)
 
 import Colors as Colors
-import Constants as Constants
 import Css exposing (..)
-import Css.Elements exposing (..)
 import Css.Extra exposing (..)
 import Css.File exposing (..)
 
 
-htmlStyles : Snippet
-htmlStyles =
-    html
-        [ height (pct 100)
-        , backgroundColor Colors.darkGray_
+sidebar =
+    uniqueClass
+        [ width (px 240)
+        , height (pct 100)
+        , position relative
+        , zIndex (int 1)
+        , Colors.boxShadowRight
         ]
 
 
-bodyStyles : Snippet
-bodyStyles =
-    body
-        [ height (pct 100)
-        , margin zero
-        , fontFamilies [ Constants.sansFont ]
-        , property "-webkit-font-smoothing" "antialiased"
+header =
+    uniqueClass
+        [ height (px 40)
         ]
-
-
-everythingStyles : Snippet
-everythingStyles =
-    everything
-        [ boxSizing borderBox ]
-
-
-buttonStyles : Snippet
-buttonStyles =
-    button
-        [ focus [ outline zero ] ]
-
-
-inputStyles : Snippet
-inputStyles =
-    input [ focus [ outline zero ] ]
 
 
 appContainer : UniqueClass
@@ -100,7 +79,6 @@ editorsContainer =
         , flexDirection column
         , height (pct 100)
         , width (pct 50)
-        , borderRight3 (px 2) solid (hex Colors.mediumGray)
         , overflow hidden
         ]
 
@@ -112,10 +90,10 @@ editorContainer =
         , position relative
         , backgroundColor (hex Colors.darkGray)
         , firstChild
-            [ borderBottom3 (px 1) solid (hex Colors.mediumGray)
+            [ borderBottom3 (px 1) solid Colors.darkGray_
             ]
         , lastChild
-            [ borderTop3 (px 1) solid (hex Colors.mediumGray)
+            [ borderTop3 (px 1) solid Colors.darkGray_
             ]
         ]
 
@@ -141,7 +119,7 @@ outputContainer =
         , height (pct 100)
         , position relative
         , zIndex (int 1)
-        , boxShadow5 (px -2) zero (px 8) zero (rgba 0 0 0 0.5)
+        , Colors.boxShadowLeft
         , overflow hidden
         ]
 

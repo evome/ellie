@@ -3,6 +3,11 @@ import './Main.css'
 import initCodeMirror from '../../Views/Editors/CodeMirror'
 import fixHtml from './fixHtml'
 import captureOpbeat from '../../Shared/Opbeat'
+import Icon from '../../Ellie/Ui/Icon'
+import '../../Ellie/Ui/ProgressBar.css'
+import Layout from './Layout'
+
+Icon.load()
 
 const vimMode = window.location.search.indexOf('vim=true') !== -1
 initCodeMirror(vimMode)
@@ -33,6 +38,8 @@ initCodeMirror(vimMode)
       latestTermsVersion,
       vimMode,
     })
+
+    Layout.start(app)
 
     app.ports.opbeatCaptureOut.subscribe(captureOpbeat)
 
@@ -78,10 +85,7 @@ initCodeMirror(vimMode)
     window.addEventListener('message', function (event) {
       if (event.data.type === 'error') {
         app.ports.jsError.send(event.data.message)
-        return
       }
-
-      app.ports.windowMessageIn.send(event.data)
     })
 
 

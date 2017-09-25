@@ -13,22 +13,22 @@ import Data.Ellie.Notification as Notification exposing (Notification)
 import Data.Ellie.Revision as Revision exposing (Revision)
 import Data.Elm.Compiler.Error as CompilerError
 import Data.Elm.Package as Package exposing (Package)
-import Dom
-import Mouse exposing (Position)
 import Navigation
 import Pages.Editor.Cmds as Cmds
 import Pages.Editor.Flags as Flags exposing (Flags)
-import Pages.Editor.Model as Model exposing (EditorCollapseState(..), Model, PopoutState(..))
+import Pages.Editor.Header.Update as Header
+import Pages.Editor.Layout.Update as Layout
+import Pages.Editor.Model as Model exposing (Model)
 import Pages.Editor.Routing as Routing exposing (Route(..))
+import Pages.Editor.Sidebar.Model as Sidebar
+import Pages.Editor.Sidebar.Update as Sidebar
 import Pages.Editor.Update.Save as Save
 import Process
 import RemoteData exposing (RemoteData(..))
 import Shared.Api as Api
-import Shared.Constants as Constants
 import Shared.Opbeat as Opbeat
 import Task
 import Time exposing (Time)
-import Window exposing (Size)
 
 
 when : (m -> Bool) -> (m -> m) -> m -> m
@@ -75,7 +75,6 @@ onlyErrors errors =
 
 type Msg
     = RouteChanged Route
-    | OpenDebugger
     | LoadRevisionCompleted (Result ApiError Revision)
     | CompileRequested
     | CompileStageChanged CompileStage
@@ -85,35 +84,24 @@ type Msg
     | OnlineChanged Bool
     | FormattingRequested
     | FormattingCompleted (Result ApiError String)
-    | RemovePackageRequested Package
     | NotificationReceived Notification
     | ClearStaleNotifications Time
     | ClearAllNotifications
     | ClearNotification Notification
-    | ResultDragStarted
-    | ResultDragged Position
-    | ResultDragEnded
-    | EditorDragStarted
-    | EditorDragged Position
-    | EditorDragEnded
-    | WindowSizeChanged Size
     | TitleChanged String
     | DescriptionChanged String
-    | SearchChanged String
-    | SearchResultsCompleted String (Result ApiError (List Package))
+    | RemovePackageRequested Package
     | PackageSelected Package
-    | ToggleSearch
     | IframeJsError String
-    | ToggleHtmlCollapse
-    | ToggleElmCollapse
-    | ReloadIframe
     | CreateGist
     | CreateGistComplete (Result ApiError String)
     | KeyComboMsg KeyCombo.Msg
     | SaveMsg Save.Msg
     | ClearElmStuff
     | NoOp
-    | TogglePopouts Model.PopoutState
+    | HeaderMsg Header.Msg
+    | SidebarMsg Sidebar.Msg
+    | LayoutMsg Layout.Msg
 
 
 onlineNotification : Bool -> Cmd Msg
@@ -137,6 +125,22 @@ onlineNotification isOnline =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        SidebarMsg sidebarMsg ->
+            model.sidebar
+                |> Sidebar.update model.clientRevision.elmVersion sidebarMsg
+                |> Tuple.mapFirst (\s -> { model | sidebar = s })
+                |> Tuple.mapSecond (Cmd.map SidebarMsg)
+
+        LayoutMsg layoutMsg ->
+            ( { model | layout = Layout.update layoutMsg model.layout }
+            , Cmd.none
+            )
+
+        HeaderMsg headerMsg ->
+            ( { model | header = Header.update headerMsg model.header }
+            , Cmd.none
+            )
+
         ClearElmStuff ->
             ( model
             , Cmd.batch
@@ -153,11 +157,6 @@ update msg model =
         KeyComboMsg keyComboMsg ->
             ( { model | keyCombo = KeyCombo.update keyComboMsg model.keyCombo }
             , Cmd.none
-            )
-
-        OpenDebugger ->
-            ( model
-            , Cmds.openDebugger
             )
 
         CreateGist ->
@@ -188,37 +187,6 @@ update msg model =
                         }
             )
 
-        ReloadIframe ->
-            ( model
-            , Cmds.reloadIframe
-            )
-
-        ToggleElmCollapse ->
-            ( { model
-                | editorsCollapse =
-                    case model.editorsCollapse of
-                        JustHtmlOpen ->
-                            BothOpen
-
-                        _ ->
-                            JustHtmlOpen
-              }
-            , Cmd.none
-            )
-
-        ToggleHtmlCollapse ->
-            ( { model
-                | editorsCollapse =
-                    case model.editorsCollapse of
-                        JustElmOpen ->
-                            BothOpen
-
-                        _ ->
-                            JustElmOpen
-              }
-            , Cmd.none
-            )
-
         IframeJsError message ->
             ( model
             , Cmds.notify NotificationReceived
@@ -229,48 +197,14 @@ update msg model =
                 }
             )
 
-        TogglePopouts popoutState ->
-            ( { model
-                | popoutState =
-                    if popoutState == model.popoutState then
-                        AllClosed
-                    else
-                        popoutState
-              }
-            , Cmd.none
-            )
-
         PackageSelected package ->
-            ( { model | searchOpen = False, packagesChanged = True, searchValue = "", searchResults = [] }
+            ( { model
+                | packagesChanged = True
+                , sidebar = Sidebar.resetSearch model.sidebar
+              }
                 |> Model.updateClientRevision (\r -> { r | packages = r.packages ++ [ package ] })
             , Cmd.none
             )
-
-        SearchChanged value ->
-            ( { model | searchValue = value }
-            , Api.searchPackages model.clientRevision.elmVersion value
-                |> Api.send (SearchResultsCompleted value)
-            )
-
-        SearchResultsCompleted searchTerm result ->
-            if searchTerm /= model.searchValue then
-                ( model, Cmd.none )
-            else
-                ( { model | searchResults = Result.withDefault model.searchResults result }
-                , Cmd.none
-                )
-
-        ToggleSearch ->
-            if model.searchOpen then
-                ( model
-                    |> Model.closeSearch
-                , Cmd.none
-                )
-            else
-                ( { model | searchOpen = True }
-                , Dom.focus "searchInput"
-                    |> Task.attempt (\_ -> NoOp)
-                )
 
         TitleChanged title ->
             ( model
@@ -281,53 +215,6 @@ update msg model =
         DescriptionChanged description ->
             ( model
                 |> Model.updateClientRevision (\r -> { r | description = description })
-            , Cmd.none
-            )
-
-        EditorDragStarted ->
-            ( { model | editorDragging = True }
-            , Cmd.none
-            )
-
-        EditorDragged position ->
-            ( { model
-                | editorSplit =
-                    position
-                        |> (\p -> toFloat (p.y - Constants.headerHeight))
-                        |> (\h -> h / toFloat (model.windowSize.height - Constants.headerHeight))
-                        |> clamp 0.2 0.8
-              }
-            , Cmd.none
-            )
-
-        EditorDragEnded ->
-            ( { model | editorDragging = False }
-            , Cmd.none
-            )
-
-        WindowSizeChanged size ->
-            ( { model | windowSize = size }
-            , Cmd.none
-            )
-
-        ResultDragStarted ->
-            ( { model | resultDragging = True }
-            , Cmd.none
-            )
-
-        ResultDragged position ->
-            ( { model
-                | resultSplit =
-                    position
-                        |> (\p -> toFloat (p.x - Constants.sidebarWidth))
-                        |> (\w -> w / toFloat (model.windowSize.width - Constants.sidebarWidth))
-                        |> clamp 0.2 0.8
-              }
-            , Cmd.none
-            )
-
-        ResultDragEnded ->
-            ( { model | resultDragging = False }
             , Cmd.none
             )
 

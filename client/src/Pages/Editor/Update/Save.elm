@@ -47,7 +47,7 @@ update model msg =
                     |> (\m -> ( m, Nothing, Cmds.compile m True ))
             else
                 ( { model
-                    | popoutState = Model.TermsOpen
+                    | termsShown = True
                     , saveState = SaveState.AwaitingTermsAcceptance
                   }
                 , Nothing
@@ -64,7 +64,6 @@ update model msg =
         TermsAcceptanceComplete (Ok _) ->
             { model
                 | acceptedTermsVersion = Just model.latestTermsVersion
-                , popoutState = Model.AllClosed
             }
                 |> Model.commitStagedCode
                 |> (\m -> ( m, Nothing, Cmds.compile model True ))
