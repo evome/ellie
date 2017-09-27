@@ -1,13 +1,8 @@
 module Pages.Editor.View exposing (view)
 
-import Data.Ellie.CompileStage as CompileStage exposing (CompileStage)
-import Data.Ellie.Notification as Notification
 import Data.Ellie.SaveState as SaveState
-import Extra.Html as Html
-import Extra.Html.Attributes as Attributes
+import Ellie.Ui.Toast as Toast
 import Html exposing (Html, button, div, header, iframe, main_, span, text)
-import Html.Attributes exposing (style)
-import Html.Events exposing (onClick, onMouseDown)
 import Pages.Editor.Header.View as Header
 import Pages.Editor.Layout.View as Layout
 import Pages.Editor.Model as Model exposing (Model)
@@ -16,9 +11,7 @@ import Pages.Editor.Routing as Routing exposing (..)
 import Pages.Editor.Sidebar.View as Sidebar
 import Pages.Editor.Update as Update exposing (Msg(..))
 import Pages.Editor.Update.Save as UpdateSave
-import Pages.Editor.View.Styles as Styles
 import RemoteData exposing (RemoteData(..))
-import Shared.Utils as Utils
 import Views.Editors as Editors
 
 
@@ -96,6 +89,19 @@ viewSidebar model =
         }
 
 
+viewNotifications : Model -> Html Msg
+viewNotifications model =
+    div [] <|
+        List.map
+            (\notification ->
+                Toast.view
+                    { notification = notification
+                    , onClose = ClearNotification notification
+                    }
+            )
+            model.notifications
+
+
 view : Model -> Html Msg
 view model =
     Layout.view
@@ -104,6 +110,7 @@ view model =
         , elm = viewElm model
         , html = viewHtml model
         , output = viewOutput model
+        , notifications = viewNotifications model
         , mapMsg = LayoutMsg
         , model = model.layout
         , loading =
